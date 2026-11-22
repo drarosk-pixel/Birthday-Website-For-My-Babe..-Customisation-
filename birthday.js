@@ -31,11 +31,14 @@ const scrollObserver = "IntersectionObserver" in window ? new IntersectionObserv
     if (!entry.isIntersecting || entry.intersectionRatio < .12) continue;
     const item = entry.target;
     observer.unobserve(item);
-    if (reduced.matches || !window.scrollY || item.closest(".scene")?.id !== current) continue;
+    delete item.dataset.revealPending;
+    if (item.classList.contains("polaroid")) item.classList.add("developing");
+    if (reduced.matches || item.closest(".scene")?.id !== current) continue;
+    const direction = item.matches(":nth-child(even)") ? 1 : -1;
     item.animate([
-      {opacity:.18, translate:"0 14px"},
+      {opacity:0, translate:(direction * 28) + "px 19px"},
       {opacity:1, translate:"0 0"}
-    ], {duration:520, delay:Math.min(count, 2)*45, easing:settle, fill:"backwards"});
+    ], {duration:780, delay:Math.min(count, 2)*70, easing:settle, fill:"backwards"});
     count++;
   }
   const now = performance.now();
@@ -52,65 +55,82 @@ function watchScrollReveals(container) {
   for (const item of items) {
     const box = item.getBoundingClientRect();
     // Content already in view keeps its scene entrance. Only the next items are scroll reveals.
-    if (box.height && box.top + .12*box.height > fold) scrollObserver.observe(item);
+    if (box.height && box.top + .12*box.height > fold) {
+      item.dataset.revealPending = "";
+      scrollObserver.observe(item);
+    }
   }
 }
 
-// The bow and the dedication expand from a point of light. The doorway fades
-// through dusty rose, and the pages within the museum travel in the same direction.
+// Reuse the same petals at every cut so moving between rooms never adds layers.
+function makePetal(left, top, size) {
+  const petal = document.createElement("i");
+  petal.className = "petal";
+  petal.style.left = left + "%";
+  petal.style.top = top + "%";
+  petal.style.setProperty("--size", size + "px");
+  return petal;
+}
+
+const sceneLight = $("#scene-light");
+const sweepPetals = [[9,24,24],[18,64,16],[29,43,36],[38,83,21],[47,18,18],
+  [55,59,32],[67,34,23],[72,78,16],[85,48,36],[95,17,22]];
+for (const [x,y,size] of sweepPetals) sceneLight.append(makePetal(x,y,size));
+for (const host of document.querySelectorAll("#opening, .ribbon-screen, #gift")) {
+  const layer = document.createElement("div");
+  layer.className = "ambient";
+  layer.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 8; i++) {
+    const petal = makePetal(4 + i*13, 0, 8 + (i%3)*3);
+    petal.style.setProperty("--fall", (12 + i%4) + "s");
+    petal.style.setProperty("--phase", (-i*3.7) + "s");
+    layer.append(petal);
+  }
+  host.prepend(layer);
+}
+
 function transitionBetween(outgoing, incoming) {
-  const light = $("#scene-light");
-  const name = incoming.id;
-  const iris = name === "dedication" || name === "tree";
-  const doorway = ["gift", "museum", "scratch"].includes(name);
-  const gallery = ["puzzle", "letter", "promises"].includes(name);
-  const duration = iris ? 1040 : doorway ? 900 : 780;
-  const play = (element, frames) => sceneMotion.push(
-    element.animate(frames, {duration, easing:"ease-in-out", fill:"both"})
-  );
-  const incomingOffset = gallery ? "translateX(20px)" : "none";
-  play(incoming, [
-    {opacity:0, transform:incomingOffset},
-    {opacity:0, transform:incomingOffset, offset:iris ? .38 : doorway ? .26 : .06},
-    {opacity:1, transform:"none", offset:iris ? .59 : doorway ? .65 : 1},
+  const calm = reduced.matches;
+  const across = ["scratch", "puzzle", "letter", "promises"].includes(incoming.id);
+  const duration = calm ? 200 : 1120;
+  function play(element, frames, timing = {}) {
+    const animation = element.animate(frames, {duration, easing:"ease-in-out", fill:"both", ...timing});
+    sceneMotion.push(animation);
+    return animation;
+  }
+  const arrival = calm ? [{opacity:0}, {opacity:1}] : [
+    {opacity:0, transform:across ? "translateX(46px)" : "translateY(32px)", offset:0},
+    {opacity:.06, offset:.19},
+    {opacity:1, transform:"none", offset:.87},
     {opacity:1, transform:"none"}
-  ]);
-  const oldContent = outgoing.querySelector(".from-card,.album-inner,.room-wrap,.tree-note");
-  if (oldContent) {
-    play(oldContent, [
-      {opacity:1},
-      {opacity:0, offset:.46},
-      {opacity:0}
-    ]);
+  ];
+  const entrance = play(incoming, arrival);
+  if (!calm) {
+    play(outgoing, [{opacity:1, transform:"none"}, {opacity:0, transform:across ? "translateX(-34px)" : "translateY(-20px)"}],
+      {duration:duration*.8});
+    play(sceneLight, [{opacity:0}, {opacity:.93,offset:.34}, {opacity:.88,offset:.62}, {opacity:0}]);
+    Array.from(sceneLight.children).forEach((petal,i) => {
+      const angle = i%2 ? 36 : -64;
+      play(petal, [
+        {opacity:0,transform:"translate3d(-48vw,18vh,0) rotate(-90deg) scale(.55)"},
+        {opacity:.84,transform:"translate3d(-4vw,1vh,0) rotate("+angle+"deg) scale(1)",offset:.48},
+        {opacity:0,transform:"translate3d(46vw,-23vh,0) rotate(155deg) scale(.72)"}
+      ], {duration:870,delay:(i%4)*48,easing:"cubic-bezier(.3,.05,.62,1)"});
+    });
   }
-  if (gallery) {
-    play(outgoing, [{transform:"none"}, {transform:"translateX(-16px)", opacity:.35}]);
-  }
-  if (iris) {
-    light.className = "iris " + name + "-light";
-    const diameter = light.offsetWidth;
-    const endScale = 3 * Math.hypot(innerWidth, innerHeight) / diameter;
-    play(light, [
-      {opacity:0, transform:"scale(.04)"},
-      {opacity:1, transform:"scale(.32)", offset:.14},
-      {opacity:1, transform:"scale(" + endScale + ")", offset:.60},
-      {opacity:0, transform:"scale(" + endScale + ")"}
-    ]);
-  } else if (doorway) {
-    light.className = "doorway-light";
-    play(light, [{opacity:0}, {opacity:.89, offset:.42}, {opacity:.83, offset:.52}, {opacity:0}]);
-  }
-  later(() => {
+  entrance.finished.then(() => {
     outgoing.hidden = true;
     outgoing.classList.remove("departing");
     outgoing.style.removeProperty("top");
     sceneMotion.forEach(animation => animation.cancel());
     sceneMotion = [];
-  }, duration);
+  }, () => { /* A newer scene took over the transition. */ });
 }
 
 function show(name) {
+  if (name === current) return;
   scrollObserver?.disconnect();
+  for (const item of document.querySelectorAll("[data-reveal-pending]")) delete item.dataset.revealPending;
   lastTouchMove = -Infinity;
   sceneTimers.forEach(clearTimeout);
   sceneTimers = [];
@@ -121,7 +141,7 @@ function show(name) {
   if (current === "letter") $("#voice").pause();
   const previous = document.getElementById(current);
   const scene = document.getElementById(name);
-  const outgoing = reduced.matches ? null : previous;
+  const outgoing = previous;
   const previousScroll = window.scrollY;
   current = name;
   for (const scene of scenes) {
@@ -132,10 +152,9 @@ function show(name) {
     scene.classList.toggle("enter", active);
     scene.classList.toggle("departing", scene === outgoing);
   }
-  if (outgoing) {
-    outgoing.style.top = -previousScroll + "px";
-    transitionBetween(outgoing, scene);
-  }
+  outgoing.style.top = -previousScroll + "px";
+  transitionBetween(outgoing, scene);
+  $("#story-progress").style.transform = "scaleX(" + (scenes.indexOf(scene) / (scenes.length - 1)) + ")";
   window.scrollTo(0, 0);
   const heading = scene.querySelector("h1,h2,button") || scene;
   if (!heading.matches("button")) heading.tabIndex = -1;
@@ -557,23 +576,20 @@ $("#open-gift").addEventListener("click",()=>{
   if (reduced.matches) { show("from"); return; }
   gift.classList.add("unwrapped");
   const rain=$(".rose-rain");
-  const columns = Math.min(13, Math.max(5, Math.ceil(innerWidth / 110)));
-  const cell = innerWidth / columns;
-  const rows = Math.max(3, Math.min(14, Math.ceil(innerHeight / (cell * .88))));
-  rain.style.setProperty("--rose-size", Math.max(cell, innerHeight / rows) * 1.32 + "px");
   const bouquet = document.createDocumentFragment();
-  for(let i=0;i<(columns+1)*rows;i++){
-    const rose=document.createElement("img");rose.src="assets/rose.webp";rose.alt="";
-    const row = Math.floor(i / (columns+1));
-    const col = i % (columns+1);
-    const y = (row + .25 + Math.random() * .48) * 100 / rows;
-    rose.style.left = ((col - (row % 2) * .5 + .05 + Math.random() * .55) * 100 / columns) + "%";
+  const count = innerWidth < 620 ? 12 : 18;
+  for (let i = 0; i < count; i++) {
+    const rose = new Image();
+    rose.src = "assets/rose.webp";
+    rose.alt = "";
+    const y = 12 + (i * 29) % 70;
+    rose.style.left = ((i + .5) / count * 100) + "%";
     rose.style.top = y + "%";
-    rose.style.scale = (.76 + Math.random() * .39).toFixed(2);
-    rose.style.setProperty("--fall-from", -(y + 23) + "vh");
-    rose.style.setProperty("--fall-to", (120 - y) + "vh");
-    rose.style.setProperty("--spin", (Math.random() - .5) * 88 + "deg");
-    rose.style.animationDelay = ((1 - row / rows) * 270 + Math.random() * 180) + "ms";
+    rose.style.setProperty("--rose-size", (18 + i%4 * 7) + "px");
+    rose.style.setProperty("--fall-from", -(y + 8) + "vh");
+    rose.style.setProperty("--fall-to", (110 - y) + "vh");
+    rose.style.setProperty("--spin", (i*27 - 90) + "deg");
+    rose.style.animationDelay = (i%5 * 70) + "ms";
     bouquet.append(rose);
   }
   rain.append(bouquet);
@@ -603,7 +619,10 @@ albumPhotos.forEach((photo, i) => {
   const img = new Image();
   img.alt = photo.alt;
   img.src = photo.src;
-  crop.append(img);
+  const wash = document.createElement("span");
+  wash.className = "print-wash";
+  wash.setAttribute("aria-hidden", "true");
+  crop.append(img, wash);
   frame.append(crop);
   $("#polaroids").append(frame);
 });
@@ -730,6 +749,7 @@ function startPuzzle(){
   $("#timer").textContent="0:00";$("#moves").textContent="Moves 0";tiles.replaceChildren();
   order.forEach((_,i)=>{
     const tile=document.createElement("button");tile.className="tile";tile.dataset.slot=i;
+    tile.style.setProperty("--tile-delay", (.36 + i*.055) + "s");
     const face=document.createElement("span");face.className="tile-face";face.setAttribute("aria-hidden","true");
     const image = new Image();
     image.alt = "";
