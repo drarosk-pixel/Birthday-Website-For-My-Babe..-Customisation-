@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#fff4eb">
+  <meta name="theme-color" content="#f9cbdc">
   <meta name="description" content="A little birthday surprise for Gunjan, made with love for 12 January 2027.">
   <title>For Gunjan, with love · 12 January 2027</title>
   <link rel="icon" href="assets/heart.webp" type="image/webp">
   <link rel="stylesheet" href="assets/fonts/fonts.css">
-  <link rel="stylesheet" href="style.css?v=6744bca5fc37">
-  <script src="birthday.js?v=641c00132f72" defer></script>
+  <link rel="stylesheet" href="style.css?v=789ffd888581">
+  <script src="birthday.js?v=c70632850687" defer></script>
 </head>
 <body>
 <button id="sound" class="sound" aria-label="Turn music on" aria-pressed="false" title="Turn music on">
@@ -20,15 +20,18 @@
 <audio id="music" src="assets/lovers.mp3" loop preload="metadata"></audio>
 <main id="story">
   <section id="opening" class="scene opening" aria-labelledby="invitation">
-    <header class="invitation"><h1 id="invitation">someone made this, just for you</h1></header>
-    <button class="heart-target" id="target" aria-label="Pull and release the heart, or tap to shoot an arrow">
-      <span class="heart-aura"></span><img src="assets/heart.webp" alt="" width="180" height="160" fetchpriority="high">
-    </button>
-    <div id="always" class="always" hidden><h2>Still you. Always you.</h2><span>— for Gunjan</span></div>
-    <button id="bow" class="bow" aria-label="Pull and release Cupid’s bow, or press Enter">
-      <canvas id="bow-art" width="360" height="360" aria-hidden="true"></canvas>
-    </button>
-    <footer class="opening-foot"><button class="pull" id="shoot">Pull &amp; let go</button><span class="dateline">Gunjan <i>♥</i> <time datetime="2027-01-12">12 January 2027</time></span></footer>
+    <div class="invitation-sheet">
+      <span class="rose-stamp" aria-hidden="true"><img src="assets/rose.webp" alt=""></span>
+      <header class="invitation"><h1 id="invitation"><span>Someone made this,</span> <em>just for you.</em></h1></header>
+      <button class="heart-target" id="target" aria-label="Pull and release the heart, or tap to shoot an arrow">
+        <span class="heart-aura"></span><img src="assets/heart.webp" alt="" width="180" height="160" fetchpriority="high">
+      </button>
+      <div id="always" class="always" hidden><h2>Still you. Always you.</h2><span>— for Gunjan</span></div>
+      <button id="bow" class="bow" aria-label="Pull and release Cupid’s bow, or press Enter">
+        <canvas id="bow-art" width="360" height="360" aria-hidden="true"></canvas>
+      </button>
+      <footer class="opening-foot"><button class="pull" id="shoot">Pull &amp; let go</button><span class="dateline">Gunjan <i>♥</i> <time datetime="2027-01-12">12 January 2027</time></span></footer>
+    </div>
   </section>
 
   <section id="dedication" class="scene dedication" aria-labelledby="dedication-title" hidden>
